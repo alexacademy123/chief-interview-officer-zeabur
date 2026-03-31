@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>首席访谈官 · 场馆诊断</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    width: 100%;
+    max-width: 600px;
+    padding: 16px 20px 12px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .header-info .name { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+  .header-info .status { font-size: 12px; color: #07c160; margin-top: 1px; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-wrap {
+    width: 100%; max-width: 600px;
+    background: #fff;
+    padding: 10px 20px;
+    display: none;
+    border-bottom: 1px solid #eee;
+  }
+  .progress-wrap.visible { display: block; }
+  .progress-label {
+    font-size: 12px; color: #888;
+    display: flex; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 4px; background: #eee; border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px; transition: width 0.4s ease;
+  }
+
+  /* ===== CHAT AREA ===== */
+  .chat-area {
+    width: 100%; max-width: 600px;
+    flex: 1;
+    padding: 16px 16px 120px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ===== MESSAGES ===== */
+  .msg { display: flex; gap: 8px; max-width: 100%; }
+  .msg.ai { align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg-bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    line-height: 1.6;
+    word-break: break-word;
+  }
+  .msg.ai .msg-bubble {
+    background: #fff;
+    color: #1a1a1a;
+    border-top-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .msg.user .msg-bubble {
+    background: #07c160;
+    color: #fff;
+    border-top-right-radius: 4px;
+  }
+
+  /* typing indicator */
+  .typing .msg-bubble {
+    display: flex; align-items: center; gap: 4px;
+    padding: 12px 16px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%; background: #bbb;
+    animation: bounce 1.2s infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* ===== QUIZ CARD ===== */
+  .quiz-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    max-width: 100%;
+  }
+  .quiz-q-num { font-size: 12px; color: #888; margin-bottom: 6px; }
+  .quiz-question { font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; line-height: 1.5; }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+  .quiz-opt {
+    padding: 12px 16px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex; align-items: center; gap: 10px;
+    background: #fafafa;
+  }
+  .quiz-opt:hover { border-color: #667eea; background: #f3f0ff; color: #667eea; }
+  .quiz-opt.selected { border-color: #667eea; background: #667eea; color: #fff; }
+  .quiz-opt-label {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .quiz-opt:not(.selected) .quiz-opt-label {
+    background: #eee;
+    color: #666;
+  }
+
+  /* 多选确认按钮 */
+  .quiz-confirm-wrap { margin-top: 14px; display: flex; justify-content: flex-end; }
+  .quiz-confirm-btn {
+    padding: 10px 24px;
+    background: #ccc;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: not-allowed;
+    transition: background 0.18s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .quiz-confirm-btn.ready {
+    background: #667eea;
+    cursor: pointer;
+  }
+  .quiz-confirm-btn.ready:active { background: #5a6fd6; }
+
+  /* city input */
+  .city-input-wrap { display: flex; gap: 8px; margin-top: 4px; }
+  .city-input {
+    flex: 1;
+    padding: 12px 14px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+  .city-input:focus { border-color: #667eea; }
+  .city-confirm {
+    padding: 12px 18px;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  /* ===== INPUT AREA ===== */
+  .input-area {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%; max-width: 600px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    padding: 12px 16px;
+    display: flex; gap: 10px; align-items: flex-end;
+  }
+  .input-box {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 20px;
+    font-size: 15px;
+    outline: none;
+    resize: none;
+    max-height: 100px;
+    line-height: 1.5;
+    font-family: inherit;
+    transition: border-color 0.18s;
+  }
+  .input-box:focus { border-color: #667eea; }
+  .send-btn {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: #07c160;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.18s;
+  }
+  .send-btn:hover { background: #06a354; }
+  .send-btn:disabled { background: #ccc; cursor: default; }
+
+  /* scroll anchor */
+  #scroll-anchor { height: 1px; }
+
+  /* ===== 来电弹窗 ===== */
+  .incoming-call-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .incoming-call-overlay.show { display: flex; }
+  .incoming-call-card {
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    border-radius: 28px;
+    padding: 36px 32px 28px;
+    width: 280px;
+    text-align: center;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    animation: callCardIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes callCardIn {
+    from { transform: scale(0.8) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .incoming-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 16px;
+    animation: avatarPulse 1.4s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(102,126,234,0.6);
+  }
+  @keyframes avatarPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(102,126,234,0.6); }
+    70%  { box-shadow: 0 0 0 18px rgba(102,126,234,0); }
+    100% { box-shadow: 0 0 0 0 rgba(102,126,234,0); }
+  }
+  .incoming-name {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .incoming-sub {
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+  .incoming-actions {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+  .incoming-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .incoming-btn-icon {
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    transition: transform 0.15s;
+  }
+  .incoming-btn-icon:active { transform: scale(0.9); }
+  .incoming-btn-label {
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+  }
+  .btn-accept .incoming-btn-icon {
+    background: #22c55e;
+    box-shadow: 0 4px 16px rgba(34,197,94,0.45);
+    animation: ringShake 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes ringShake {
+    from { transform: rotate(-8deg); }
+    to   { transform: rotate(8deg); }
+  }
+  .btn-decline .incoming-btn-icon {
+    background: #6b7280;
+  }
+
+  /* ===== 全屏电话通话界面 ===== */
+  .phone-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, #1a1a2e 0%, #0d1117 60%, #0a0a0f 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 60px 0 50px;
+    z-index: 100;
+    overflow: hidden;
+  }
+  .phone-screen.active { display: flex; }
+
+  .phone-ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(102,126,234,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    transition: all 0.3s;
+  }
+  .phone-ripple.r1 { width: 260px; height: 260px; }
+  .phone-ripple.r2 { width: 360px; height: 360px; opacity: 0.6; }
+  .phone-ripple.r3 { width: 460px; height: 460px; opacity: 0.3; }
+  @keyframes ripple-ai {
+    0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+    50%  { transform: translate(-50%,-50%) scale(1.15); opacity: 0.4; }
+    100% { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+  }
+  @keyframes ripple-user {
+    0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+    50%  { transform: translate(-50%,-50%) scale(1.12); opacity: 0.5; }
+    100% { transform: translate(-50%,-50%) scale(1);   opacity: 0.7; }
+  }
+  .phone-screen.ai-speaking .phone-ripple {
+    background: radial-gradient(circle, rgba(102,126,234,0.15) 0%, transparent 70%);
+    animation: ripple-ai 1.4s ease-in-out infinite;
+  }
+  .phone-screen.user-speaking .phone-ripple {
+    background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%);
+    animation: ripple-user 0.8s ease-in-out infinite;
+  }
+
+  .phone-top {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .phone-avatar-ring {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 0 0 4px rgba(102,126,234,0.2), 0 0 0 8px rgba(102,126,234,0.08);
+    transition: box-shadow 0.4s;
+  }
+  .phone-screen.ai-speaking .phone-avatar-ring {
+    box-shadow: 0 0 0 6px rgba(102,126,234,0.35), 0 0 0 14px rgba(102,126,234,0.12);
+  }
+  .phone-name {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .phone-status {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    min-height: 18px;
+    transition: color 0.3s;
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.4;
+  }
+  .phone-status.listening { color: #10b981; }
+  .phone-status.speaking  { color: #818cf8; }
+  .phone-timer {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1px;
+  }
+
+  .phone-subtitle {
+    position: relative;
+    z-index: 1;
+    min-height: 52px;
+    max-width: 300px;
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+    padding: 0 20px;
+    transition: all 0.3s;
+  }
+  .phone-subtitle.user-text { color: #10b981; }
+
+  .phone-bottom {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .phone-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.25);
+  }
+  .phone-hangup-btn {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: none;
+    color: #fff;
+    font-size: 28px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+    transition: all 0.18s;
+    transform: rotate(135deg);
+  }
+  .phone-hangup-btn:hover { background: #dc2626; transform: rotate(135deg) scale(1.05); }
+
+  .voice-bar { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="avatar">🎙</div>
+  <div class="header-info">
+    <div class="name">首席访谈官</div>
+    <div class="status">● 在线</div>
+  </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-label">
+    <span>基础信息问卷</span>
+    <span id="progressText">0 / 17</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Chat Area -->
+<div class="chat-area" id="chatArea">
+  <div id="scroll-anchor"></div>
+</div>
+
+<!-- Input Area -->
+<div class="input-area" id="inputArea">
+  <textarea class="input-box" id="inputBox" placeholder="输入消息…" rows="1"
+    onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
+  <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+</div>
+
+<!-- 来电弹窗 -->
+<div class="incoming-call-overlay" id="incomingCallOverlay">
+  <div class="incoming-call-card">
+    <div class="incoming-avatar">🎙</div>
+    <div class="incoming-name">首席访谈官</div>
+    <div class="incoming-sub">邀请您进行语音通话…</div>
+    <div class="incoming-actions">
+      <button class="incoming-btn btn-accept" onclick="acceptVoiceCall()">
+        <div class="incoming-btn-icon">📞</div>
+        <div class="incoming-btn-label">接听</div>
+      </button>
+      <button class="incoming-btn btn-decline" onclick="declineVoiceCall()">
+        <div class="incoming-btn-icon">⌨️</div>
+        <div class="incoming-btn-label">文字</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 全屏电话通话界面 -->
+<div class="phone-screen" id="phoneScreen">
+  <div class="phone-ripple r1"></div>
+  <div class="phone-ripple r2"></div>
+  <div class="phone-ripple r3"></div>
+
+  <div class="phone-top">
+    <div class="phone-avatar-ring">🎙</div>
+    <div class="phone-name">首席访谈官</div>
+    <div class="phone-status" id="phoneStatus">通话中</div>
+    <div class="phone-timer" id="phoneTimer">00:00</div>
+  </div>
+
+  <div class="phone-subtitle" id="phoneSubtitle"></div>
+
+  <div class="phone-bottom">
+    <div class="phone-hint">说话即可，无需按键</div>
+    <button class="phone-hangup-btn" onclick="endVoiceSession()" title="挂断">📞</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — 所有 Key 已移除，通过后端 /api 代理调用
+// ============================================================
+const XF_APPID = '';  // 前端不需要，后端持有
+
+// ============================================================
+// PHASE STATE
+// 0=破冰  1=问卷  2=等待确认语音  3=深度对话(语音通话)
+// ============================================================
+let phase = 0;
+let quizIndex = 0;
+let quizAnswers = {};
+let conversationHistory = [];
+let isWaiting = false;
+
+// ============================================================
+// QUIZ DATA (17题)
+// ============================================================
+const QUIZ = [
+  {
+    key: 'venue.type',
+    q: '你的场馆属于哪种类型？',
+    type: 'choice',
+    opts: [
+      '综合健身俱乐部（大型器械+团课）',
+      '运动工作室（专项：瑜伽/普拉提/搏击等）',
+      '私教工作室（以私教课为主）',
+      '综合体育中心（多项目混合）',
+      '其他（请在下方输入）'
+    ]
+  },
+  {
+    key: 'venue.city',
+    q: '你的场馆在哪个城市？',
+    type: 'text',
+    placeholder: '直接输入城市名，例如：重庆'
+  },
+  {
+    key: 'venue.years',
+    q: '场馆开了多久了？',
+    type: 'choice',
+    opts: ['不到1年', '1-3年', '3-5年', '5年以上']
+  },
+  {
+    key: 'venue.area',
+    q: '场馆总面积大概是？',
+    type: 'choice',
+    opts: ['300㎡以下', '300-800㎡', '800-1500㎡', '1500㎡以上']
+  },
+  {
+    key: 'venue.store_count',
+    q: '目前有几家门店？',
+    type: 'choice',
+    opts: ['1家', '2-3家', '4家及以上']
+  },
+  {
+    key: 'team.total',
+    q: '包括教练、前台、运营，团队总共多少人？',
+    type: 'choice',
+    opts: ['5人以下', '5-10人', '10-20人', '20人以上']
+  },
+  {
+    key: 'team.has_sales_role',
+    q: '团队里有没有专职的销售或会籍顾问？',
+    type: 'choice',
+    opts: [
+      '有，专职销售团队',
+      '有，但只有1-2个兼职管销售',
+      '没有，教练兼卖 / 口碑自然成交'
+    ]
+  },
+  {
+    key: 'members.total',
+    q: '目前大约有多少会员（含有效期内）？',
+    type: 'choice',
+    opts: ['100人以下', '100-300人', '300-800人', '800人以上']
+  },
+  {
+    key: 'revenue.main_source',
+    q: '你们最主要的收入是哪类？',
+    type: 'choice',
+    opts: ['私教课程为主', '团课/会员卡为主', '私教+团课大致各半', '预售/大额年卡为主']
+  },
+  {
+    key: 'revenue.pt_price',
+    q: '私教课单节价格大概在？',
+    type: 'choice',
+    opts: ['200元以下', '200-400元', '400-800元', '800元以上']
+  },
+  {
+    key: 'finance.income_pattern',
+    q: '你们的收入是什么节奏？',
+    type: 'choice',
+    opts: [
+      '每月比较均匀，波动不大',
+      '有明显淡旺季，差距较大',
+      '严重依赖年初/节假日预售冲量',
+      '不太清楚，没有认真统计过'
+    ]
+  },
+  {
+    key: 'finance.profit_state',
+    q: '目前经营整体感觉是？',
+    type: 'choice',
+    opts: [
+      '在亏损',
+      '收支基本平衡',
+      '有盈利但不多',
+      '盈利状况不错',
+      '各店情况不一，整体说不准'
+    ]
+  },
+  {
+    key: 'finance.cashflow_pressure',
+    q: '每个月月底，资金情况通常是？',
+    type: 'choice',
+    opts: [
+      '很宽裕，从不担心',
+      '基本够用，偶尔需要规划一下',
+      '经常需要提前安排好资金节奏',
+      '压力比较大，是持续关注的问题'
+    ]
+  },
+  {
+    key: 'owner.daily_hours',
+    q: '你平均每天在场馆待多久？',
+    type: 'choice',
+    opts: [
+      '全天都在（8小时以上）',
+      '半天左右（4-6小时）',
+      '每天来2小时以内',
+      '基本不在店，远程管理为主'
+    ]
+  },
+  {
+    key: 'acquisition.main_channel',
+    q: '你们现在新客户主要从哪里来？',
+    type: 'choice',
+    opts: [
+      '周边自然流量（路过/附近居民）',
+      '老会员转介绍口碑为主',
+      '线上投放（抖音/小红书/朋友圈）',
+      '合作引流（企业单位/社区/跨界）'
+    ]
+  },
+  {
+    key: 'tech.current_tools',
+    q: '你们现在主要用什么管理场馆？',
+    type: 'choice',
+    opts: [
+      '没有专门工具，靠微信+Excel',
+      '有健身管理软件（如健身云/自研等）',
+      '有但基本不用',
+      '多套工具混用，比较乱'
+    ]
+  },
+  {
+    key: 'tech.ai_acceptance',
+    q: '你对AI工具的态度是？',
+    type: 'choice',
+    opts: [
+      '没接触过，不太了解',
+      '听说过，有点好奇',
+      '用过一些（如ChatGPT/文心等）',
+      '已经在日常工作中使用AI'
+    ]
+  }
+];
+
+// ============================================================
+// SYSTEM PROMPT
+// ============================================================
+const SYSTEM_PROMPT = `你是一位资深运动场馆经营顾问，有超过10年的健身房、瑜伽馆、普拉提馆的经营管理咨询经验。你的名字叫"首席访谈官"。
+
+你现在的任务是和一位运动场馆的经营者进行一次深度而温暖的对话，目的是通过自然聊天了解他们场馆的现状、面临的困惑和真实需求。
+
+# 你的对话风格
+
+- 文字对话，保持温暖自然的语气
+- 每次回复控制在50-80字，方便阅读
+- 用教练式提问：先接住对方说的，再引向下一个话题
+- 【铁律】每次回复只能出现一个问号，绝对禁止在同一条回复里连续问两个问题
+- 先跟后带：先接住对方说的内容，再自然引到下一个话题
+- 【夸赞铁律】夸赞必须有明确来源——只有从用户说的话、选的选项、透露的信息里能推断出来的，才能说。禁止凭空捏造没有依据的正面评价。
+- 用隐喻让抽象问题变得直觉化
+- 遇到敏感话题用感官语言降低防御
+- 感受到对方情绪时要先共情，不要继续问问题
+
+# 重要规则
+
+- 基础信息问卷已经收集完毕（见用户资料），不要再重复问这些信息
+- 访谈进行中禁止输出分析、建议、评价或结论——只问问题、接话、给小结论
+- 每个维度聊完后，给一个简短的"听起来……"式小结论，让对方感觉被听见
+
+# 本次访谈目标维度（按优先级）
+
+1. 场馆定位与差异化（对方视角）
+2. 创始人背景与动机
+3. 最头疼的问题（场景还原）
+4. 人员管理现状
+5. 客户经营与增长
+6. 数字化/AI就绪度
+
+- 大约18-22轮对话后自然收尾，先邀请对方说自己的觉察
+
+# 开场
+
+问卷刚完成，你已说过过渡话术。直接进入第一个开放式问题，不需要再自我介绍。`;
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function scrollToBottom() {
+  const area = document.getElementById('chatArea');
+  setTimeout(() => area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }), 50);
+}
+
+function addMsg(role, content, isHtml) {
+  const area = document.getElementById('chatArea');
+  const anchor = document.getElementById('scroll-anchor');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if (role === 'ai') {
+    div.innerHTML = '<div class="msg-avatar">🎙</div><div class="msg-bubble">' +
+      (isHtml ? content : escHtml(content)) + '</div>';
+  } else {
+    div.innerHTML = '<div class="msg-bubble">' + escHtml(content) + '</div>';
+  }
+  area.insertBefore(div, anchor);
+  scrollToBottom();
+  return div;
+}
+
+function addTyping() {
+  const area = document.getElementById('chatArea');
+  const anchor = document.getElementById('scroll-anchor');
+  const div = document.createElement('div');
+  div.className = 'msg ai typing';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="msg-avatar">🎙</div><div class="msg-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  area.insertBefore(div, anchor);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingIndicator');
+  if (t) t.remove();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function setInputDisabled(v) {
+  document.getElementById('inputBox').disabled = v;
+  document.getElementById('sendBtn').disabled = v;
+}
+
+function updateProgress() {
+  const pct = Math.round((quizIndex / 17) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = quizIndex + ' / 17';
+}
+
+// ============================================================
+// QUIZ CARD
+// ============================================================
+function renderQuizCard() {
+  const q = QUIZ[quizIndex];
+  const labels = 'ABCDE';
+  const area = document.getElementById('chatArea');
+  const anchor = document.getElementById('scroll-anchor');
+
+  const old = document.getElementById('quizCard');
+  if (old) old.remove();
+
+  const card = document.createElement('div');
+  card.id = 'quizCard';
+  card.className = 'msg ai';
+  card.style.maxWidth = '100%';
+
+  let optsHtml = '';
+  if (q.type === 'text') {
+    optsHtml = '<div class="city-input-wrap"><input class="city-input" id="cityInput" placeholder="' + q.placeholder + '" /><button class="city-confirm" onclick="submitCity()">确认</button></div>';
+  } else {
+    optsHtml = '<div class="quiz-options">' + q.opts.map((opt, i) =>
+      '<div class="quiz-opt" onclick="toggleOpt(' + i + ')">' +
+      '<span class="quiz-opt-label">' + labels[i] + '</span>' +
+      '<span>' + escHtml(opt) + '</span>' +
+      '</div>'
+    ).join('') + '</div>' +
+    '<div class="quiz-confirm-wrap">' +
+    '<button class="quiz-confirm-btn" id="quizConfirmBtn" onclick="confirmQuiz()">确认 →</button>' +
+    '</div>';
+  }
+
+  card.innerHTML = '<div class="msg-avatar">🎙</div><div class="quiz-card" style="flex:1;max-width:78%">' +
+    '<div class="quiz-q-num">Q' + (quizIndex + 1) + ' / 17</div>' +
+    '<div class="quiz-question">' + escHtml(q.q) + '</div>' +
+    optsHtml +
+    '</div>';
+
+  area.insertBefore(card, anchor);
+  scrollToBottom();
+  updateProgress();
+}
+
+function toggleOpt(i) {
+  const opts = document.querySelectorAll('#quizCard .quiz-opt');
+  opts[i].classList.toggle('selected');
+  const anySelected = Array.from(opts).some(o => o.classList.contains('selected'));
+  const btn = document.getElementById('quizConfirmBtn');
+  if (btn) {
+    if (anySelected) {
+      btn.classList.add('ready');
+    } else {
+      btn.classList.remove('ready');
+    }
+  }
+}
+
+function confirmQuiz() {
+  const q = QUIZ[quizIndex];
+  const labels = 'ABCDE';
+  const opts = document.querySelectorAll('#quizCard .quiz-opt');
+  const selectedLabels = [];
+  const selectedTexts = [];
+  opts.forEach((o, i) => {
+    if (o.classList.contains('selected')) {
+      selectedLabels.push(labels[i]);
+      selectedTexts.push(labels[i] + '. ' + q.opts[i]);
+    }
+  });
+  if (selectedLabels.length === 0) return;
+
+  quizAnswers[q.key] = selectedTexts.join('、');
+  addMsg('user', selectedTexts.join('、'));
+  nextQuiz();
+}
+
+function submitCity() {
+  const val = document.getElementById('cityInput').value.trim();
+  if (!val) return;
+  const q = QUIZ[quizIndex];
+  quizAnswers[q.key] = val;
+  addMsg('user', val);
+  nextQuiz();
+}
+
+function nextQuiz() {
+  const card = document.getElementById('quizCard');
+  if (card) card.remove();
+  quizIndex++;
+  updateProgress();
+
+  if (quizIndex >= 17) {
+    finishQuiz();
+  } else {
+    setTimeout(() => renderQuizCard(), 400);
+  }
+}
+
+// ============================================================
+// PHASE 0: 破冰
+// ============================================================
+function startIceBreak() {
+  phase = 0;
+  setTimeout(() => {
+    addMsg('ai', '你好！我是首席访谈官，今天能跟你聊聊真的挺开心的。😊\n\n方便先告诉我怎么称呼你吗？');
+    setInputDisabled(false);
+  }, 800);
+}
+
+const infoBox = {
+  name: null,
+  venue: null,
+  mood: null
+};
+
+// ============================================================
+// AI 实体提取（破冰专用）— 调后端 /api/chat
+// ============================================================
+async function extractEntities(userMsg) {
+  const historyContext = conversationHistory.slice(-6).map(m => m.role + ': ' + m.content).join('\n');
+  const extractPrompt = '以下是一段对话历史和用户最新输入。请从中提取两个字段：\n' +
+    '- person_name: 用户希望被称呼的名字或称谓（没有则null）\n' +
+    '- venue_name: 场馆/工作室/健身房的名字（没有则null）\n\n' +
+    '对话历史：\n' + historyContext + '\n\n' +
+    '用户最新输入："' + userMsg + '"\n\n' +
+    '注意：场馆名字不是人名。如果用户只发了一个短词，结合上下文判断它是人名还是场馆名。字母+数字组合（如"B1"）、品牌词（如"麦克"）、或中文+字母的组合，在上下文是询问场馆名时，优先识别为venue_name。\n' +
+    '只返回JSON，格式：{"person_name":"xxx","venue_name":"xxx"}，未知字段用null。';
+
+  try {
+    const data = await callChatAPI([{ role: 'user', content: extractPrompt }], false, 60, 0);
+    if (data && data.choices && data.choices[0]) {
+      const raw = data.choices[0].message.content.trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          name: parsed.person_name && parsed.person_name !== 'null' ? parsed.person_name : null,
+          venue: parsed.venue_name && parsed.venue_name !== 'null' ? parsed.venue_name : null
+        };
+      }
+    }
+  } catch(e) {}
+  return { name: null, venue: null };
+}
+
+// ============================================================
+// 通用 API 调用（走后端代理）
+// ============================================================
+async function callChatAPI(messages, stream, max_tokens, temperature) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      stream: stream || false,
+      max_tokens: max_tokens || 300,
+      temperature: temperature !== undefined ? temperature : 0.7
+    })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error('API错误 ' + res.status + ': ' + err);
+  }
+  return res.json();
+}
+
+// ============================================================
+// PHASE 0 → 1 TRANSITION
+// ============================================================
+let iceStep = 'collect_name';
+
+async function handleIceBreak(userMsg) {
+  conversationHistory.push({ role: 'user', content: userMsg });
+
+  if (iceStep === 'collect_name') {
+    addTyping();
+    setInputDisabled(true);
+
+    const extracted = await extractEntities(userMsg);
+    if (extracted.name && !infoBox.name) infoBox.name = extracted.name;
+
+    if (infoBox.name) {
+      iceStep = 'collect_achievement';
+      const prompt = '用户的称呼是"' + infoBox.name + '"。' +
+        '用1句话自然叫出对方的称呼表示欢迎，然后问这个问题：你开这个馆，到目前为止，让你最有成就感的一件事是什么？' +
+        '语气温暖自然，回复控制在40字以内。';
+      await callAI(prompt);
+    } else {
+      const prompt = '用户说："' + userMsg + '"，但没有透露称呼。' +
+        '用1句话自然回应，然后问：方便告诉我怎么称呼你吗？回复控制在35字以内。';
+      await callAI(prompt);
+    }
+
+  } else if (iceStep === 'collect_achievement') {
+    iceStep = 'done';
+    infoBox.achievement = userMsg;
+    addTyping();
+    setInputDisabled(true);
+    const prompt = '用户分享了他最有成就感的事："' + userMsg + '"。' +
+      '用1句话真诚接住（"听起来……"式），让对方感到被听见。' +
+      '然后自然过渡：「好，在我们深聊之前，我想先花3分钟快速了解一下你的馆——17个选择题，点一点就完成，不用打字。」' +
+      '不要问"准备好了吗"，直接说完就好。回复控制在65字以内。';
+    await callAI(prompt, () => {
+      phase = 1;
+      setInputDisabled(true);
+      document.getElementById('progressWrap').classList.add('visible');
+      setTimeout(() => renderQuizCard(), 800);
+    });
+  }
+}
+
+// ============================================================
+// CALL AI（通用）— 调后端
+// ============================================================
+async function callAI(instructionOrNull, callback) {
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...conversationHistory
+  ];
+  if (instructionOrNull) {
+    messages.push({ role: 'user', content: instructionOrNull });
+  }
+
+  try {
+    const data = await callChatAPI(messages, false, 250, 0.7);
+    removeTyping();
+    if (data.choices && data.choices[0]) {
+      const reply = data.choices[0].message.content.trim();
+      addMsg('ai', reply);
+      conversationHistory.push({ role: 'assistant', content: reply });
+    } else {
+      addMsg('ai', '网络异常，请稍后重试。');
+    }
+  } catch(e) {
+    removeTyping();
+    addMsg('ai', '连接失败，请稍后重试。');
+  }
+  isWaiting = false;
+  setInputDisabled(false);
+  if (callback) callback();
+}
+
+// ============================================================
+// 深度对话
+// ============================================================
+async function deepConversation(userText) {
+  const quizData = Object.entries(quizAnswers).map(([k, v]) => k + ': ' + v).join('\n');
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT + '\n\n【已采集的结构化问卷数据】\n' + quizData },
+    ...conversationHistory
+  ];
+
+  try {
+    const data = await callChatAPI(messages, false, 300, 0.7);
+    removeTyping();
+    if (data.choices && data.choices[0]) {
+      const reply = cleanReply(data.choices[0].message.content.trim());
+      addMsg('ai', reply);
+      conversationHistory.push({ role: 'assistant', content: reply });
+    } else {
+      addMsg('ai', '网络异常，请稍后重试。');
+    }
+  } catch(e) {
+    removeTyping();
+    addMsg('ai', '连接失败，请稍后重试。');
+  }
+  isWaiting = false;
+  setInputDisabled(false);
+}
+
+// ============================================================
+// 问卷结束 → 深度对话
+// ============================================================
+const CALL_INVITE_TEXT = '那我现在打个电话给你，咱们语音聊更方便，你看行吗？';
+
+async function startDeepTalk() {
+  const quizSummary = '【基础问卷已完成，数据如下】\n' +
+    Object.entries(quizAnswers).map(([k, v]) => k + ': ' + v).join('\n') +
+    '\n\n任务：\n1. 快速扫描以上数据，如果发现明显矛盾或需要核实的地方，用1句话轻松确认，语气不要审问。\n2. 说过渡话术（"不用选了，就聊聊"之类），然后说：我现在打个电话给你，语音聊更方便，你看行吗？\n3. 只说这句话，不要提问题，控制在50字以内，自然口语化。';
+
+  conversationHistory.push({ role: 'user', content: quizSummary });
+  addTyping();
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...conversationHistory
+  ];
+
+  let reply = '';
+  try {
+    const data = await callChatAPI(messages, false, 120, 0.7);
+    removeTyping();
+    if (data.choices && data.choices[0]) {
+      reply = cleanReply(data.choices[0].message.content.trim());
+      addMsg('ai', reply);
+      conversationHistory.push({ role: 'assistant', content: reply });
+    }
+  } catch(e) {
+    removeTyping();
+    reply = CALL_INVITE_TEXT;
+    addMsg('ai', reply);
+  }
+
+  isWaiting = false;
+  phase = 2;
+  setInputDisabled(false);
+}
+
+let _pendingTTSReply = '';
+
+function showIncomingCall(replyText) {
+  if (replyText) _pendingTTSReply = replyText;
+  document.getElementById('incomingCallOverlay').classList.add('show');
+}
+
+async function acceptVoiceCall() {
+  document.getElementById('incomingCallOverlay').classList.remove('show');
+  phase = 3;
+  enterVoiceMode();
+  if (_pendingTTSReply) {
+    setPhoneStatus('通话中', 'speaking');
+    setPhoneSubtitle(_pendingTTSReply, 'ai');
+    await playTTS(_pendingTTSReply);
+    _pendingTTSReply = '';
+  }
+  autoStartListening();
+}
+
+function declineVoiceCall() {
+  document.getElementById('incomingCallOverlay').classList.remove('show');
+  _pendingTTSReply = '';
+  phase = 3;
+  addMsg('ai', '好的，那我们就文字聊！先说说，你的馆现在最让你头疼的事情是什么？');
+  setInputDisabled(false);
+}
+
+function finishQuiz() {
+  document.getElementById('progressWrap').classList.remove('visible');
+  phase = 2;
+  isWaiting = true;
+  setInputDisabled(true);
+  setTimeout(() => startDeepTalk(), 600);
+}
+
+// ============================================================
+// 清洗 AI 回复
+// ============================================================
+function cleanReply(text) {
+  if (!text) return text;
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  text = text.replace(/[（(][^）)]*思考[^）)]*[）)]/g, '');
+  text = text.replace(/^[（(][^）)]{0,80}[）)]\s*$/gm, '');
+  return text.trim();
+}
+
+// ============================================================
+// Phase 2：等待确认语音
+// ============================================================
+function handleVoiceConfirm(text) {
+  const lower = text.toLowerCase();
+  const agreeWords = ['ok', 'okay', '好', '可以', '行', '没问题', '可', '同意', '接受', '打吧', '打过来', '语音', '打电话', '接', '嗯', '是的', '对', '当然'];
+  const disagreeWords = ['不', '算了', '文字', '不要', '不用', '不接', '不打', '不好'];
+
+  const agreed = agreeWords.some(w => lower.includes(w));
+  const disagreed = disagreeWords.some(w => lower.includes(w));
+
+  if (disagreed && !agreed) {
+    addMsg('user', text);
+    addMsg('ai', '好的，那我们就文字聊！你先说说，你的馆现在最让你头疼的事情是什么？');
+    phase = 3;
+    isWaiting = false;
+    setInputDisabled(false);
+    return;
+  }
+
+  if (agreed || text.length <= 10) {
+    addMsg('user', text);
+    conversationHistory.push({ role: 'user', content: text });
+    showIncomingCall('');
+    isWaiting = false;
+    return;
+  }
+
+  addMsg('user', text);
+  addMsg('ai', '你的意思是……可以语音聊吗，我现在打过去？');
+  isWaiting = false;
+  setInputDisabled(false);
+}
+
+// ============================================================
+// 全屏电话通话模式
+// ============================================================
+let voiceMode = false;
+let isListeningVoice = false;
+let isTTSSpeaking = false;
+let xfWs = null;
+let xfRecordStream = null;
+let xfCtx = null;
+let pendingTranscript = '';
+let phoneTimerInterval = null;
+let phoneSeconds = 0;
+
+function enterVoiceMode() {
+  voiceMode = true;
+  document.getElementById('inputArea').style.display = 'none';
+  const screen = document.getElementById('phoneScreen');
+  screen.classList.add('active');
+  phoneSeconds = 0;
+  phoneTimerInterval = setInterval(() => {
+    phoneSeconds++;
+    const m = String(Math.floor(phoneSeconds / 60)).padStart(2, '0');
+    const s = String(phoneSeconds % 60).padStart(2, '0');
+    const t = document.getElementById('phoneTimer');
+    if (t) t.textContent = m + ':' + s;
+  }, 1000);
+}
+
+function endVoiceSession() {
+  stopVoiceAll();
+  clearInterval(phoneTimerInterval);
+  voiceMode = false;
+  const screen = document.getElementById('phoneScreen');
+  screen.classList.remove('active', 'ai-speaking', 'user-speaking');
+  document.getElementById('inputArea').style.display = '';
+  setInputDisabled(false);
+}
+
+function setPhoneStatus(text, mode) {
+  const el = document.getElementById('phoneStatus');
+  const screen = document.getElementById('phoneScreen');
+  if (el) {
+    el.textContent = text;
+    el.className = 'phone-status' + (mode ? ' ' + mode : '');
+  }
+  screen.classList.remove('ai-speaking', 'user-speaking');
+  if (mode === 'speaking') screen.classList.add('ai-speaking');
+  if (mode === 'listening') screen.classList.add('user-speaking');
+}
+
+function setPhoneSubtitle(text, type) {
+  const el = document.getElementById('phoneSubtitle');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'phone-subtitle' + (type === 'user' ? ' user-text' : '');
+}
+
+function autoStartListening() {
+  if (!voiceMode || isTTSSpeaking) return;
+  setPhoneStatus('在听...', 'listening');
+  setPhoneSubtitle('', '');
+  startVoiceListening();
+}
+
+// ---- ASR：讯飞实时语音识别（鉴权URL由后端生成）----
+async function startVoiceListening() {
+  if (isListeningVoice || isTTSSpeaking) return;
+  isListeningVoice = true;
+  pendingTranscript = '';
+
+  try {
+    // 从后端获取鉴权URL，Key不暴露在前端
+    const urlRes = await fetch('/api/xf-asr-url');
+    const { url: wsUrl } = await urlRes.json();
+
+    xfWs = new WebSocket(wsUrl);
+
+    xfWs.onopen = () => {
+      xfWs.send(JSON.stringify({
+        common: { app_id: '' },  // app_id 已在后端签名里
+        business: { language: 'zh_cn', domain: 'iat', accent: 'mandarin', vad_eos: 2500, dwa: 'wpgs' },
+        data: { status: 0, format: 'audio/L16;rate=16000', encoding: 'raw', audio: '' }
+      }));
+      startMicCapture();
+    };
+
+    xfWs.onmessage = (evt) => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.data && d.data.result) {
+          const ws = d.data.result.ws || [];
+          const piece = ws.map(w => w.cw.map(c => c.w).join('')).join('');
+          if (d.data.result.pgs === 'rpl') {
+            pendingTranscript = piece;
+          } else {
+            pendingTranscript += piece;
+          }
+          if (pendingTranscript) setPhoneSubtitle(pendingTranscript, 'user');
+        }
+        if (d.data && d.data.status === 2) {
+          const final = pendingTranscript.trim();
+          stopXfAsr(false);
+          if (final) {
+            submitVoiceSpeech(final);
+          } else {
+            setPhoneStatus('在听...', 'listening');
+            setPhoneSubtitle('', '');
+            autoStartListening();
+          }
+        }
+      } catch(e) {}
+    };
+
+    xfWs.onerror = () => {
+      stopXfAsr(false);
+      setPhoneStatus('识别出错，正在重试...', '');
+      setTimeout(() => autoStartListening(), 1500);
+    };
+    xfWs.onclose = () => {};
+
+  } catch(e) {
+    isListeningVoice = false;
+    setPhoneStatus('麦克风未授权', '');
+    setPhoneSubtitle('请检查浏览器麦克风权限', '');
+  }
+}
+
+async function startMicCapture() {
+  try {
+    xfRecordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    xfCtx = new AudioContext({ sampleRate: 16000 });
+    const src = xfCtx.createMediaStreamSource(xfRecordStream);
+    const processor = xfCtx.createScriptProcessor(1024, 1, 1);
+    src.connect(processor);
+    processor.connect(xfCtx.destination);
+    processor._src = src;
+    processor.onaudioprocess = (e) => {
+      if (!isListeningVoice || !xfWs || xfWs.readyState !== WebSocket.OPEN) return;
+      const input = e.inputBuffer.getChannelData(0);
+      const pcm = new Int16Array(input.length);
+      for (let i = 0; i < input.length; i++) pcm[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(pcm.buffer)));
+      xfWs.send(JSON.stringify({ data: { status: 1, format: 'audio/L16;rate=16000', encoding: 'raw', audio: b64 } }));
+    };
+    if (xfWs) xfWs._processor = processor;
+  } catch(e) {
+    stopXfAsr(false);
+    setPhoneStatus('麦克风权限被拒绝', '');
+    setPhoneSubtitle('请在浏览器设置里允许麦克风', '');
+  }
+}
+
+function stopXfAsr(sendEnd) {
+  isListeningVoice = false;
+  try {
+    if (xfWs && sendEnd && xfWs.readyState === WebSocket.OPEN) {
+      xfWs.send(JSON.stringify({ data: { status: 2, format: 'audio/L16;rate=16000', encoding: 'raw', audio: '' } }));
+      setTimeout(() => { try { xfWs.close(); } catch(e){} }, 300);
+    } else if (xfWs) {
+      try { xfWs.close(); } catch(e){}
+    }
+  } catch(e) {}
+  xfWs = null;
+  try {
+    if (xfRecordStream) { xfRecordStream.getTracks().forEach(t => t.stop()); xfRecordStream = null; }
+    if (xfCtx) { xfCtx.close(); xfCtx = null; }
+  } catch(e) {}
+}
+
+function stopVoiceAll() {
+  stopXfAsr(false);
+  stopCurrentTTS();
+  isTTSSpeaking = false;
+}
+
+// 用户说完话 → AI响应 → TTS播放 → 循环监听
+async function submitVoiceSpeech(text) {
+  setPhoneStatus('思考中...', '');
+  setPhoneSubtitle(text, 'user');
+  conversationHistory.push({ role: 'user', content: text });
+
+  const quizData = Object.entries(quizAnswers).map(([k, v]) => k + ': ' + v).join('\n');
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT + (quizData ? '\n\n【已采集的结构化问卷数据】\n' + quizData : '') },
+    ...conversationHistory
+  ];
+
+  let replyText = '';
+  try {
+    const data = await callChatAPI(messages, false, 200, 0.7);
+    if (data.choices && data.choices[0]) {
+      replyText = cleanReply(data.choices[0].message.content.trim());
+    } else {
+      replyText = '网络有点问题，你刚才说的能再说一遍吗？';
+    }
+  } catch(e) {
+    replyText = '信号不太好，你刚才说的能再说一遍吗？';
+  }
+
+  conversationHistory.push({ role: 'assistant', content: replyText });
+  setPhoneStatus('通话中', 'speaking');
+  setPhoneSubtitle(replyText, 'ai');
+
+  await playTTS(replyText);
+
+  setPhoneSubtitle('', '');
+  autoStartListening();
+}
+
+// ===== TTS：讯飞WebSocket（鉴权URL由后端生成）+ 浏览器降级 =====
+const XF_TTS_VOICES = ['x4_lingxiaoqi_oral', 'x4_xiaoyan', 'xiaoyan'];
+let currentVoiceIndex = 0;
+let currentAudio = null;
+let xfTtsWs = null;
+let ttsResolve = null;
+
+async function playTTS(text) {
+  isTTSSpeaking = true;
+  stopCurrentTTS();
+  try {
+    await xfTTS(text);
+  } catch(e) {
+    console.warn('[TTS] 讯飞失败，降级浏览器TTS | 原因:', e && e.message ? e.message : e);
+    await browserTTS(text);
+  }
+  isTTSSpeaking = false;
+}
+
+function stopCurrentTTS() {
+  try {
+    if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; }
+    if (xfTtsWs) { try { xfTtsWs.close(); } catch(e){} xfTtsWs = null; }
+    if (ttsResolve) { ttsResolve(); ttsResolve = null; }
+    speechSynthesis.cancel();
+  } catch(e) {}
+}
+
+async function xfTTS(text) {
+  const voice = XF_TTS_VOICES[currentVoiceIndex] || XF_TTS_VOICES[0];
+
+  // 从后端获取 TTS 鉴权URL
+  const urlRes = await fetch('/api/xf-tts-url');
+  const { url } = await urlRes.json();
+  const audioChunks = [];
+
+  return new Promise((resolve, reject) => {
+    ttsResolve = resolve;
+    const ws = new WebSocket(url);
+    xfTtsWs = ws;
+
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('xf tts timeout'));
+    }, 12000);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        common: { app_id: '' },  // app_id 已在后端鉴权里
+        business: {
+          aue: 'lame',
+          sfl: 1,
+          auf: 'audio/L16;rate=16000',
+          vcn: voice,
+          speed: 50,
+          volume: 80,
+          pitch: 50,
+          tte: 'UTF8'
+        },
+        data: {
+          status: 2,
+          text: btoa(unescape(encodeURIComponent(text)))
+        }
+      }));
+    };
+
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.code !== 0) {
+          clearTimeout(timer);
+          ws.close();
+          reject(new Error('xf tts code=' + msg.code + ' ' + (msg.message || '')));
+          return;
+        }
+        if (msg.data && msg.data.audio) {
+          const bin = atob(msg.data.audio);
+          const buf = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+          audioChunks.push(buf);
+        }
+        if (msg.data && msg.data.status === 2) {
+          clearTimeout(timer);
+          ws.close();
+          xfTtsWs = null;
+
+          const total = audioChunks.reduce((s, c) => s + c.length, 0);
+          const merged = new Uint8Array(total);
+          let offset = 0;
+          for (const c of audioChunks) { merged.set(c, offset); offset += c.length; }
+          const blob = new Blob([merged], { type: 'audio/mpeg' });
+          const blobUrl = URL.createObjectURL(blob);
+          currentAudio = new Audio(blobUrl);
+          currentAudio.onended = () => { URL.revokeObjectURL(blobUrl); ttsResolve = null; resolve(); };
+          currentAudio.onerror = () => { URL.revokeObjectURL(blobUrl); ttsResolve = null; resolve(); };
+          currentAudio.play().catch(() => { ttsResolve = null; resolve(); });
+        }
+      } catch(e) {
+        clearTimeout(timer);
+        reject(e);
+      }
+    };
+
+    ws.onerror = () => {
+      clearTimeout(timer);
+      xfTtsWs = null;
+      reject(new Error('xf tts ws error'));
+    };
+
+    ws.onclose = () => {
+      clearTimeout(timer);
+      xfTtsWs = null;
+    };
+  });
+}
+
+function browserTTS(text) {
+  return new Promise((resolve) => {
+    speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'zh-CN';
+    utt.rate = 1.0;
+    utt.onend = resolve;
+    utt.onerror = resolve;
+    speechSynthesis.speak(utt);
+  });
+}
+
+// ============================================================
+// SEND MESSAGE
+// ============================================================
+function sendMessage() {
+  const box = document.getElementById('inputBox');
+  const text = box.value.trim();
+  if (!text || isWaiting) return;
+
+  box.value = '';
+  autoResize(box);
+  addMsg('user', text);
+  isWaiting = true;
+  setInputDisabled(true);
+
+  if (phase === 0) {
+    handleIceBreak(text);
+    return;
+  }
+  if (phase === 2) {
+    handleVoiceConfirm(text);
+    return;
+  }
+  if (phase === 3) {
+    conversationHistory.push({ role: 'user', content: text });
+    addTyping();
+    deepConversation(text);
+  }
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+setInputDisabled(true);
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+// 自动启动
+startIceBreak();
+</script>
+</body>
+</html>
